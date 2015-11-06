@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "description": "Drag&drop sortable grid.",
   "main": "index.js",
+  "keywords": [
+    "react",
+    "draggable",
+    "sortable",
+    "drag&drop",
+    "grid",
+    "react-component"
+  ],
   "scripts": {
     "build": "webpack index.js dist/ReactSortableGrid.js",
     "build-min": "webpack -p index.js dist/ReactSortableGrid.min.js",
