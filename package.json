@@ -1,0 +1,50 @@
+{
+  "name": "react-sortable-grid",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack index.js dist/ReactSortableGrid.js",
+    "build-min": "webpack -p index.js dist/ReactSortableGrid.min.js",
+    "test": "mocha --compilers js:babel/register  src/**/*.test.js",
+    "demo": "npm run build-demo;webpack-dev-server --config webpack.config.demo.js --hot --inline",
+    "build-demo": "webpack --config webpack.config.demo.js",
+    "coverage": "babel-istanbul cover _mocha -- src/**/*.test.js",
+    "lint": "eslint src",
+    "esdoc": "esdoc -c esdoc.json"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "babel": "^5.8.23",
+    "babel-core": "^5.8.25",
+    "babel-eslint": "^4.1.3",
+    "babel-istanbul": "^0.4.1",
+    "babel-loader": "^5.3.2",
+    "chai": "^3.3.0",
+    "esdoc": "^0.4.0",
+    "esdoc-es7-plugin": "0.0.3",
+    "eslint": "^1.7.3",
+    "eslint-plugin-react": "^3.6.3",
+    "expect.js": "^0.3.1",
+    "file-loader": "^0.8.4",
+    "html-webpack-plugin": "^1.6.2",
+    "i": "^0.3.3",
+    "istanbul": "^0.4.0",
+    "mocha": "^2.3.3",
+    "mockery": "^1.4.0",
+    "npm": "^3.3.6",
+    "react": "0.14.1",
+    "react-addons-shallow-compare": "^0.14.0",
+    "react-addons-test-utils": "^0.14.0",
+    "react-dom": "^0.14.1",
+    "sinon": "^1.17.1",
+    "sinon-stub-promise": "^0.1.0",
+    "webpack": "^1.12.2",
+    "webpack-dev-server": "1.10.1"
+  },
+  "dependencies": {
+    "reflux": "^0.3.0",
+    "rest": "^1.3.1"
+  }
+}
