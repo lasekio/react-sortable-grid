@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../../../">
+  <title data-ice="title">src/components/SortableGrid/SortableGrid.js | API Document</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  
+  
+</head>
+<body class="layout-container">
+
+<header>
+  <a href="./">Home</a>
+  <a href="identifiers.html">Identifier</a>
+  <a href="source.html">Source</a>
+  
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+</header>
+
+<nav class="navigation" data-ice="nav"><div data-ice="classWrap">
+  <h2>Class</h2>
+  <ul>
+    
+  <li data-ice="classDoc"><span><a href="class/src/components/SortableGrid/SortableGrid.js~SortableGrid.html">SortableGrid</a></span></li>
+<li data-ice="classDoc"><span><a href="class/src/components/SortableGridItem/SortableGridItem.js~SortableGridItem.html">SortableGridItem</a></span></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+
+
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">src/components/SortableGrid/SortableGrid.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import React, { Component } from &apos;react&apos;;
+import SortableGridItem from &apos;../SortableGridItem/SortableGridItem&apos;;
+var blockId = 0;
+
+/**
+ * @class SortableGrid
+ * @extends {React.Component}
+ * @attr {String} grid - Grid in 2x2 style
+ * @desc
+ * Sortable grid generates grid for given `grid` prop.
+ *
+ * # Props
+ *
+ * ## _{Number}_ `columns` - width of grid
+ * ## _{Number}_ `rows` - height of grid
+ */
+export default class SortableGrid extends Component {
+    constructor(props) {
+        super();
+
+        this.state = {
+            blocks: this._generateBlocks(props),
+            draggingBlock: null,
+            dragStartCursorPosition: null,
+            lastDraggingBlock: null,
+        };
+    }
+
+    dragStart(block, event) {
+        if (event.preventDefault) {
+            event.preventDefault();
+        }
+
+        if (this.props.children &amp;&amp; block.position &gt;= this.props.children.length) {
+            return false;
+        }
+
+        this.setState({
+            draggingBlock: block,
+            draggingBlockDragStartPosition: block.position,
+            dragStartCursorPosition: {
+                x: event.clientX,
+                y: event.clientY,
+            },
+            dragCursorDiffPosition: {
+                x: 0,
+                y: 0,
+            },
+        });
+    }
+
+    dragHandle(event) {
+        var triggerRelativeMatch = 0.25;
+
+        if (this.state.draggingBlock === null) {
+            return;
+        }
+
+        var diff = {
+            x: (event.clientX - this.state.dragStartCursorPosition.x) / this.refs.container.offsetWidth * 100,
+            y: (event.clientY - this.state.dragStartCursorPosition.y) / this.refs.container.offsetHeight * 100,
+        };
+
+        var newState = {
+            dragCursorDiffPosition: {
+                x: diff.x,
+                y: (event.clientY - this.state.dragStartCursorPosition.y) / this.refs.container.offsetWidth * 100,
+            },
+        };
+
+        var draggingBlockOffset = this._getOffestForPosition(this.state.draggingBlockDragStartPosition);
+
+        draggingBlockOffset.x += diff.x / 100 * this.props.columns;
+        draggingBlockOffset.y += diff.y / 100 * this.props.rows;
+
+        let matchBlock = this.state.blocks.filter((block) =&gt; {
+            if (this.state.draggingBlock &amp;&amp; block.id === this.state.draggingBlock.id) {
+                return false;
+            }
+
+            if (block.position &gt;= this.props.children.length) {
+                return false;
+            }
+
+            let offset = this._getOffestForPosition(block.position);
+
+            return Math.abs(offset.x - draggingBlockOffset.x) &lt; triggerRelativeMatch &amp;&amp;
+                Math.abs(offset.y - draggingBlockOffset.y) &lt; triggerRelativeMatch;
+        })[0];
+
+        if (matchBlock !== undefined) {
+            var oldPosition = this.state.draggingBlock.position;
+            var newPosition = matchBlock.position;
+            var positionMap = {};
+
+            newState.blocks = this.state.blocks.map((block) =&gt; {
+                block.previousPosition = block.position;
+
+                if (block.position &gt; oldPosition &amp;&amp; block.position &lt;= matchBlock.position) {
+                    block.position--;
+                } else if (block.position &lt;= oldPosition &amp;&amp; block.position &gt;= matchBlock.position) {
+                    block.position++;
+                }
+
+                if (block.id === this.state.draggingBlock.id) {
+                    block.position = newPosition;
+                }
+
+                positionMap[block.previousPosition] = block.position;
+
+                return block;
+            });
+
+            this.props.onReorder(positionMap);
+        }
+
+        this.setState(newState);
+    }
+
+    stopDrag() {
+        this.setState({
+            draggingBlock: null,
+            draggingBlockDragStartPosition: null,
+            lastDraggingBlock: this.state.draggingBlock,
+        });
+    }
+
+    /*
+     * @inheirtdocs
+     * @returns {div} component
+     */
+    render() {
+        const blockWidth = 100 / this.props.columns;
+        const blockHeight = 100 / this.props.rows;
+        let blocks = this.state.blocks;
+
+        return (&lt;div onMouseMove={this.dragHandle.bind(this)}
+            onMouseUp={this.stopDrag.bind(this)}
+            onMouseLeave={this.stopDrag.bind(this)}
+            style={{
+                width: &apos;100%&apos;,
+                height: &apos;100%&apos;,
+                position: &apos;relative&apos;,
+            }}
+            ref=&quot;container&quot;&gt;
+
+            {blocks.map((block, index) =&gt; {
+                var position = block.position;
+                var style = {};
+                const item = this._findItem(position);
+
+                if (this.state.draggingBlock &amp;&amp; this.state.draggingBlock.id === block.id) {
+                    style = {
+                        marginTop: this.state.dragCursorDiffPosition.y + &apos;%&apos;,
+                        marginLeft: this.state.dragCursorDiffPosition.x + &apos;%&apos;,
+                        zIndex: 3,
+                        transition: &apos;none&apos;,
+                    };
+
+                    position = this.state.draggingBlockDragStartPosition;
+                }
+
+                if (block.position !== block.previousPosition &amp;&amp; this._isEdgePositon(block.position) &amp;&amp; this._isEdgePositon(block.previousPosition)) {
+                    style = {zIndex: 1, ...style};
+                }
+
+                if (this.state.draggingBlock === null &amp;&amp; this.state.lastDraggingBlock &amp;&amp; this.state.lastDraggingBlock.id === block.id) {
+                    style = {zIndex: 2, ...style};
+                }
+
+                var {x: leftPosition, y: topPosition} = this._getOffestForPosition(position);
+
+                style = {
+                    top: blockHeight * topPosition + &apos;%&apos;,
+                    left: blockWidth * leftPosition + &apos;%&apos;,
+                    zIndex: 0,
+                    width: blockWidth + &apos;%&apos;,
+                    height: blockHeight + &apos;%&apos;,
+                    marginTop: &apos;0%&apos;,
+                    marginLeft: &apos;0%&apos;,
+                    position: &apos;absolute&apos;,
+                    borderSizing: &apos;border-box&apos;,
+                    transition: &apos;top 500ms ease, left 500ms ease, margin 500ms ease&apos;,
+                    ...style,
+                };
+
+                return &lt;div style={{marginTop: 1, ...style}}
+                    key={block.id}
+                    onMouseDown={this.dragStart.bind(this, block)}&gt;
+                        {item}
+                &lt;/div&gt;;
+            })}
+        &lt;/div&gt;);
+    }
+
+    _findItem(position) {
+        if (!this.props.children) {
+            return null;
+        }
+
+        const childs = this.props.children.filter ? this.props.children : [this.props.children];
+
+        return childs.filter(child =&gt; {
+            return child.props.position === position;
+        })[0];
+    }
+
+    _isEdgePositon(position) {
+        var offset = position % this.props.columns;
+
+        return offset === 0 || offset === this.props.columns - 1;
+    }
+
+    _generateBlocks(props) {
+        const targetLength = props.columns * props.rows;
+        let blocks = [];
+
+        for (var index = 0; index &lt; targetLength; index++) {
+            blocks.push({
+                id: blockId++,
+                position: index,
+                previousPosition: index,
+            });
+        }
+
+        return blocks;
+    }
+
+    _getOffestForPosition(position) {
+        return {
+            x: position % this.props.columns,
+            y: Math.floor(position / this.props.columns),
+        };
+    }
+}
+
+SortableGrid.SortableGridItem = SortableGridItem;
+</code></pre>
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.2.3)</span></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "coverage": "11.11%",
+  "expectCount": 9,
+  "actualCount": 1,
+  "files": {
+    "src/components/SortableGrid/SortableGrid.js": {
+      "expectCount": 7,
+      "actualCount": 1
+    },
+    "src/components/SortableGridItem/SortableGridItem.js": {
+      "expectCount": 2,
+      "actualCount": 0
+    }
+  }
+}

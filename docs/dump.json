@@ -1,0 +1,1145 @@
+[
+  {
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "src/components/SortableGrid/SortableGrid.js",
+    "memberof": null,
+    "longname": "src/components/SortableGrid/SortableGrid.js",
+    "access": null,
+    "description": null,
+    "lineNumber": 1,
+    "content": "import React, { Component } from 'react';\nimport SortableGridItem from '../SortableGridItem/SortableGridItem';\nvar blockId = 0;\n\n/**\n * @class SortableGrid\n * @extends {React.Component}\n * @attr {String} grid - Grid in 2x2 style\n * @desc\n * Sortable grid generates grid for given `grid` prop.\n *\n * # Props\n *\n * ## _{Number}_ `columns` - width of grid\n * ## _{Number}_ `rows` - height of grid\n */\nexport default class SortableGrid extends Component {\n    constructor(props) {\n        super();\n\n        this.state = {\n            blocks: this._generateBlocks(props),\n            draggingBlock: null,\n            dragStartCursorPosition: null,\n            lastDraggingBlock: null,\n        };\n    }\n\n    dragStart(block, event) {\n        if (event.preventDefault) {\n            event.preventDefault();\n        }\n\n        if (this.props.children && block.position >= this.props.children.length) {\n            return false;\n        }\n\n        this.setState({\n            draggingBlock: block,\n            draggingBlockDragStartPosition: block.position,\n            dragStartCursorPosition: {\n                x: event.clientX,\n                y: event.clientY,\n            },\n            dragCursorDiffPosition: {\n                x: 0,\n                y: 0,\n            },\n        });\n    }\n\n    dragHandle(event) {\n        var triggerRelativeMatch = 0.25;\n\n        if (this.state.draggingBlock === null) {\n            return;\n        }\n\n        var diff = {\n            x: (event.clientX - this.state.dragStartCursorPosition.x) / this.refs.container.offsetWidth * 100,\n            y: (event.clientY - this.state.dragStartCursorPosition.y) / this.refs.container.offsetHeight * 100,\n        };\n\n        var newState = {\n            dragCursorDiffPosition: {\n                x: diff.x,\n                y: (event.clientY - this.state.dragStartCursorPosition.y) / this.refs.container.offsetWidth * 100,\n            },\n        };\n\n        var draggingBlockOffset = this._getOffestForPosition(this.state.draggingBlockDragStartPosition);\n\n        draggingBlockOffset.x += diff.x / 100 * this.props.columns;\n        draggingBlockOffset.y += diff.y / 100 * this.props.rows;\n\n        let matchBlock = this.state.blocks.filter((block) => {\n            if (this.state.draggingBlock && block.id === this.state.draggingBlock.id) {\n                return false;\n            }\n\n            if (block.position >= this.props.children.length) {\n                return false;\n            }\n\n            let offset = this._getOffestForPosition(block.position);\n\n            return Math.abs(offset.x - draggingBlockOffset.x) < triggerRelativeMatch &&\n                Math.abs(offset.y - draggingBlockOffset.y) < triggerRelativeMatch;\n        })[0];\n\n        if (matchBlock !== undefined) {\n            var oldPosition = this.state.draggingBlock.position;\n            var newPosition = matchBlock.position;\n            var positionMap = {};\n\n            newState.blocks = this.state.blocks.map((block) => {\n                block.previousPosition = block.position;\n\n                if (block.position > oldPosition && block.position <= matchBlock.position) {\n                    block.position--;\n                } else if (block.position <= oldPosition && block.position >= matchBlock.position) {\n                    block.position++;\n                }\n\n                if (block.id === this.state.draggingBlock.id) {\n                    block.position = newPosition;\n                }\n\n                positionMap[block.previousPosition] = block.position;\n\n                return block;\n            });\n\n            this.props.onReorder(positionMap);\n        }\n\n        this.setState(newState);\n    }\n\n    stopDrag() {\n        this.setState({\n            draggingBlock: null,\n            draggingBlockDragStartPosition: null,\n            lastDraggingBlock: this.state.draggingBlock,\n        });\n    }\n\n    /*\n     * @inheirtdocs\n     * @returns {div} component\n     */\n    render() {\n        const blockWidth = 100 / this.props.columns;\n        const blockHeight = 100 / this.props.rows;\n        let blocks = this.state.blocks;\n\n        return (<div onMouseMove={this.dragHandle.bind(this)}\n            onMouseUp={this.stopDrag.bind(this)}\n            onMouseLeave={this.stopDrag.bind(this)}\n            style={{\n                width: '100%',\n                height: '100%',\n                position: 'relative',\n            }}\n            ref=\"container\">\n\n            {blocks.map((block, index) => {\n                var position = block.position;\n                var style = {};\n                const item = this._findItem(position);\n\n                if (this.state.draggingBlock && this.state.draggingBlock.id === block.id) {\n                    style = {\n                        marginTop: this.state.dragCursorDiffPosition.y + '%',\n                        marginLeft: this.state.dragCursorDiffPosition.x + '%',\n                        zIndex: 3,\n                        transition: 'none',\n                    };\n\n                    position = this.state.draggingBlockDragStartPosition;\n                }\n\n                if (block.position !== block.previousPosition && this._isEdgePositon(block.position) && this._isEdgePositon(block.previousPosition)) {\n                    style = {zIndex: 1, ...style};\n                }\n\n                if (this.state.draggingBlock === null && this.state.lastDraggingBlock && this.state.lastDraggingBlock.id === block.id) {\n                    style = {zIndex: 2, ...style};\n                }\n\n                var {x: leftPosition, y: topPosition} = this._getOffestForPosition(position);\n\n                style = {\n                    top: blockHeight * topPosition + '%',\n                    left: blockWidth * leftPosition + '%',\n                    zIndex: 0,\n                    width: blockWidth + '%',\n                    height: blockHeight + '%',\n                    marginTop: '0%',\n                    marginLeft: '0%',\n                    position: 'absolute',\n                    borderSizing: 'border-box',\n                    transition: 'top 500ms ease, left 500ms ease, margin 500ms ease',\n                    ...style,\n                };\n\n                return <div style={{marginTop: 1, ...style}}\n                    key={block.id}\n                    onMouseDown={this.dragStart.bind(this, block)}>\n                        {item}\n                </div>;\n            })}\n        </div>);\n    }\n\n    _findItem(position) {\n        if (!this.props.children) {\n            return null;\n        }\n\n        const childs = this.props.children.filter ? this.props.children : [this.props.children];\n\n        return childs.filter(child => {\n            return child.props.position === position;\n        })[0];\n    }\n\n    _isEdgePositon(position) {\n        var offset = position % this.props.columns;\n\n        return offset === 0 || offset === this.props.columns - 1;\n    }\n\n    _generateBlocks(props) {\n        const targetLength = props.columns * props.rows;\n        let blocks = [];\n\n        for (var index = 0; index < targetLength; index++) {\n            blocks.push({\n                id: blockId++,\n                position: index,\n                previousPosition: index,\n            });\n        }\n\n        return blocks;\n    }\n\n    _getOffestForPosition(position) {\n        return {\n            x: position % this.props.columns,\n            y: Math.floor(position / this.props.columns),\n        };\n    }\n}\n\nSortableGrid.SortableGridItem = SortableGridItem;\n"
+  },
+  {
+    "kind": "variable",
+    "static": true,
+    "variation": null,
+    "name": "blockId",
+    "memberof": "src/components/SortableGrid/SortableGrid.js",
+    "longname": "src/components/SortableGrid/SortableGrid.js~blockId",
+    "access": null,
+    "export": false,
+    "importPath": "react-sortable-grid/src/components/SortableGrid/SortableGrid.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 3,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    }
+  },
+  {
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "SortableGrid",
+    "memberof": "src/components/SortableGrid/SortableGrid.js",
+    "longname": "src/components/SortableGrid/SortableGrid.js~SortableGrid",
+    "access": null,
+    "export": true,
+    "importPath": "react-sortable-grid/src/components/SortableGrid/SortableGrid.js",
+    "importStyle": "SortableGrid",
+    "description": "Sortable grid generates grid for given `grid` prop.\n\n# Props\n\n## _{Number}_ `columns` - width of grid\n## _{Number}_ `rows` - height of grid",
+    "lineNumber": 17,
+    "unknown": [
+      {
+        "tagName": "@class",
+        "tagValue": "SortableGrid"
+      },
+      {
+        "tagName": "@attr",
+        "tagValue": "{String} grid - Grid in 2x2 style"
+      }
+    ],
+    "interface": false,
+    "extends": [
+      "React.Component"
+    ]
+  },
+  {
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "src/components/SortableGrid/SortableGrid.js~SortableGrid",
+    "longname": "src/components/SortableGrid/SortableGrid.js~SortableGrid#constructor",
+    "access": null,
+    "description": null,
+    "lineNumber": 18,
+    "undocument": true,
+    "params": [
+      {
+        "name": "props",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "state",
+    "memberof": "src/components/SortableGrid/SortableGrid.js~SortableGrid",
+    "longname": "src/components/SortableGrid/SortableGrid.js~SortableGrid#state",
+    "access": null,
+    "description": null,
+    "lineNumber": 21,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "dragStart",
+    "memberof": "src/components/SortableGrid/SortableGrid.js~SortableGrid",
+    "longname": "src/components/SortableGrid/SortableGrid.js~SortableGrid#dragStart",
+    "access": null,
+    "description": null,
+    "lineNumber": 29,
+    "undocument": true,
+    "params": [
+      {
+        "name": "block",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "event",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "boolean"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "dragHandle",
+    "memberof": "src/components/SortableGrid/SortableGrid.js~SortableGrid",
+    "longname": "src/components/SortableGrid/SortableGrid.js~SortableGrid#dragHandle",
+    "access": null,
+    "description": null,
+    "lineNumber": 52,
+    "undocument": true,
+    "params": [
+      {
+        "name": "event",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "stopDrag",
+    "memberof": "src/components/SortableGrid/SortableGrid.js~SortableGrid",
+    "longname": "src/components/SortableGrid/SortableGrid.js~SortableGrid#stopDrag",
+    "access": null,
+    "description": null,
+    "lineNumber": 120,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "render",
+    "memberof": "src/components/SortableGrid/SortableGrid.js~SortableGrid",
+    "longname": "src/components/SortableGrid/SortableGrid.js~SortableGrid#render",
+    "access": null,
+    "description": null,
+    "lineNumber": 132,
+    "undocument": true,
+    "params": [],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_findItem",
+    "memberof": "src/components/SortableGrid/SortableGrid.js~SortableGrid",
+    "longname": "src/components/SortableGrid/SortableGrid.js~SortableGrid#_findItem",
+    "access": null,
+    "description": null,
+    "lineNumber": 196,
+    "undocument": true,
+    "params": [
+      {
+        "name": "position",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_isEdgePositon",
+    "memberof": "src/components/SortableGrid/SortableGrid.js~SortableGrid",
+    "longname": "src/components/SortableGrid/SortableGrid.js~SortableGrid#_isEdgePositon",
+    "access": null,
+    "description": null,
+    "lineNumber": 208,
+    "undocument": true,
+    "params": [
+      {
+        "name": "position",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_generateBlocks",
+    "memberof": "src/components/SortableGrid/SortableGrid.js~SortableGrid",
+    "longname": "src/components/SortableGrid/SortableGrid.js~SortableGrid#_generateBlocks",
+    "access": null,
+    "description": null,
+    "lineNumber": 214,
+    "undocument": true,
+    "params": [
+      {
+        "name": "props",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_getOffestForPosition",
+    "memberof": "src/components/SortableGrid/SortableGrid.js~SortableGrid",
+    "longname": "src/components/SortableGrid/SortableGrid.js~SortableGrid#_getOffestForPosition",
+    "access": null,
+    "description": null,
+    "lineNumber": 229,
+    "undocument": true,
+    "params": [
+      {
+        "name": "position",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "src/components/SortableGrid/SortableGrid.test.js",
+    "memberof": null,
+    "longname": "src/components/SortableGrid/SortableGrid.test.js",
+    "access": null,
+    "description": null,
+    "lineNumber": 1,
+    "content": "import ReactTestUtils from 'react-addons-test-utils';\nimport SortableGrid, {SortableGridItem} from './SortableGrid';\nimport React from 'react';\nimport {expect} from 'chai';\nimport sinon from 'sinon';\n\ndescribe('SortableGrid component', function() {\n    var shallowRenderer, output, reorderStub;\n\n    function render(input) {\n        shallowRenderer = ReactTestUtils.createRenderer();\n\n        shallowRenderer.render(input);\n\n        return shallowRenderer.getRenderOutput();\n    }\n\n    it('renders div with 100% width and height', function() {\n        output = render(<SortableGrid columns={4} rows={4}/>);\n\n        expect(output.type).to.equal('div');\n        expect(output.props.style.width).to.equal('100%');\n        expect(output.props.style.height).to.equal('100%');\n        expect(output.props.style.position).to.equal('relative');\n    });\n\n    it('generates grid of divs', function() {\n        output = render(<SortableGrid columns={4} rows={4}/>);\n\n        expect(output.props.children.length).to.equal(16);\n        expect(output.props.children[0].type).to.equal('div');\n\n        expect(output.props.children[0].props.style.width).to.equal('25%');\n        expect(output.props.children[0].props.style.height).to.equal('25%');\n\n        expect(output.props.children[0].props.style.top).to.equal('0%');\n        expect(output.props.children[0].props.style.left).to.equal('0%');\n\n        expect(output.props.children[1].props.style.top).to.equal('0%');\n        expect(output.props.children[1].props.style.left).to.equal('25%');\n\n        expect(output.props.children[5].props.style.top).to.equal('25%');\n        expect(output.props.children[5].props.style.left).to.equal('25%');\n\n        expect(output.props.children[1].props.style.position).to.equal('absolute');\n    });\n\n    it('ignores all mousemove if there was no mousedown on block', function() {\n        output = render(<SortableGrid columns={4} rows={4}/>);\n\n        output.props.onMouseMove({\n            clientX: 20,\n            clientY: 40,\n        });\n\n        var outputAfterMove = shallowRenderer.getRenderOutput();\n\n        expect(output).to.eq(outputAfterMove);\n    });\n\n    function testMoveBlock(blockIndex = 2) {\n        reorderStub = sinon.spy();\n        output = render(<SortableGrid columns={4} rows={4} onReorder={reorderStub}>\n            <SortableGridItem position={0}></SortableGridItem>\n            <SortableGridItem position={1}></SortableGridItem>\n            <SortableGridItem position={2}></SortableGridItem>\n            <SortableGridItem position={3}></SortableGridItem>\n            <SortableGridItem position={4}></SortableGridItem>\n            <SortableGridItem position={5}></SortableGridItem>\n            <SortableGridItem position={6}></SortableGridItem>\n        </SortableGrid>);\n\n        var instance = shallowRenderer._instance._instance;\n\n        instance.refs = {\n            container: {\n                offsetWidth: 200,\n                offsetHeight: 200,\n            },\n        };\n\n        output.props.children[blockIndex].props.onMouseDown({\n            clientX: 0,\n            clientY: 0,\n        });\n\n        output.props.onMouseMove({\n            clientX: 20,\n            clientY: 40,\n        });\n\n        output = shallowRenderer.getRenderOutput();\n\n        expect(output.props.children[blockIndex].props.style.marginLeft).to.equal('10%');\n        expect(output.props.children[blockIndex].props.style.marginTop).to.equal('20%');\n    }\n\n    it('moves block on drag', testMoveBlock);\n\n    function testBlockStyle(index, style, value) {\n        expect(output.props.children[index].props.style[style]).to.equal(value);\n    }\n\n    it('reorders blocks on proper move', function() {\n        testMoveBlock();\n\n        output.props.onMouseMove({\n            clientX: 1,\n            clientY: 1,\n        });\n\n        expect(reorderStub.called).to.eq(false);\n\n        output = shallowRenderer.getRenderOutput();\n\n        output.props.onMouseMove({\n            clientX: 0,\n            clientY: 40,\n        });\n\n        expect(reorderStub.called).to.eq(true);\n        expect(reorderStub.args[0][0]).to.deep.equal({\n            '0': 0,\n            '1': 1,\n            '2': 6,\n            '3': 2,\n            '4': 3,\n            '5': 4,\n            '6': 5,\n            '7': 7,\n            '8': 8,\n            '9': 9,\n            '10': 10,\n            '11': 11,\n            '12': 12,\n            '13': 13,\n            '14': 14,\n            '15': 15,\n        });\n\n        output = shallowRenderer.getRenderOutput();\n\n        testBlockStyle(1, 'left', '25%');\n        testBlockStyle(1, 'top', '0%');\n\n        testBlockStyle(2, 'left', '50%');\n        testBlockStyle(2, 'top', '0%');\n        testBlockStyle(2, 'zIndex', 3);\n\n        testBlockStyle(3, 'left', '50%');\n        testBlockStyle(3, 'top', '0%');\n        testBlockStyle(5, 'zIndex', 0);\n\n        testBlockStyle(4, 'left', '75%');\n        testBlockStyle(4, 'top', '0%');\n        testBlockStyle(4, 'zIndex', 1); // This block moves from edge-to-edge\n\n        testBlockStyle(5, 'left', '0%');\n        testBlockStyle(5, 'top', '25%');\n        testBlockStyle(5, 'zIndex', 0);\n\n        testBlockStyle(6, 'left', '25%');\n        testBlockStyle(6, 'top', '25%');\n\n        testBlockStyle(7, 'left', '75%');\n        testBlockStyle(7, 'top', '25%');\n\n    });\n\n    it('reorders blocks on move backward', function() {\n        testMoveBlock(5);\n\n        output.props.onMouseMove({\n            clientX: 0,\n            clientY: -40,\n        });\n\n        output = shallowRenderer.getRenderOutput();\n\n        testBlockStyle(0, 'left', '0%');\n        testBlockStyle(0, 'top', '0%');\n\n        testBlockStyle(1, 'left', '50%');\n        testBlockStyle(1, 'top', '0%');\n\n        testBlockStyle(2, 'left', '75%');\n        testBlockStyle(2, 'top', '0%');\n\n        testBlockStyle(3, 'left', '0%');\n        testBlockStyle(3, 'top', '25%');\n        testBlockStyle(3, 'zIndex', 1); // This block moves from edge-to-edge\n\n        testBlockStyle(4, 'left', '25%');\n        testBlockStyle(4, 'top', '25%');\n\n        testBlockStyle(5, 'left', '25%');\n        testBlockStyle(5, 'top', '25%');\n    });\n\n    it('stops draging on mouse up', function() {\n        testMoveBlock();\n\n        expect(output.props.children[2].props.style.marginLeft).to.equal('10%');\n        expect(output.props.children[2].props.style.marginTop).to.equal('20%');\n    });\n\n    it('renders blocks with given items', function() {\n        const item = <SortableGridItem position={0}></SortableGridItem>;\n\n        output = render(<SortableGrid columns={4} rows={4}>{item}</SortableGrid>);\n\n        expect(output.props.children[0].props.children).to.equal(item);\n    });\n\n    it('stops dragging on mouseup', function() {\n        testMoveBlock();\n\n        output.props.onMouseUp();\n\n        output = shallowRenderer.getRenderOutput();\n\n        expect(output.props.children[2].props.style.marginLeft).to.equal('0%');\n        expect(output.props.children[2].props.style.marginTop).to.equal('0%');\n\n        // Last dragging block should has 2 index\n        expect(output.props.children[2].props.style.zIndex).to.equal(2);\n    });\n\n    it('stops dragging on mouseleave', function() {\n        testMoveBlock();\n\n        output.props.onMouseLeave();\n\n        output = shallowRenderer.getRenderOutput();\n\n        expect(output.props.children[2].props.style.marginLeft).to.equal('0%');\n        expect(output.props.children[2].props.style.marginTop).to.equal('0%');\n\n        // Last dragging block should has 2 index\n        expect(output.props.children[2].props.style.zIndex).to.equal(2);\n    });\n\n    it('prevents text selecting', function() {\n        output = render(<SortableGrid columns={4} rows={4}></SortableGrid>);\n        const preventDefaultSpy = sinon.spy();\n\n        output.props.children[1].props.onMouseDown({\n            preventDefault: preventDefaultSpy,\n        });\n\n        expect(preventDefaultSpy.called).to.eq(true);\n    });\n\n    it('ignores block click out of range', function() {\n        testMoveBlock();\n\n        output.props.onMouseUp();\n\n        output.props.children[7].props.onMouseDown({\n            clientX: 0,\n            clientY: 0,\n        });\n\n        output.props.onMouseMove({\n            clientX: 20,\n            clientY: 40,\n        });\n\n        output = shallowRenderer.getRenderOutput();\n\n        expect(output.props.children[7].props.style.marginLeft).to.equal('0%');\n        expect(output.props.children[7].props.style.marginTop).to.equal('0%');\n    });\n});\n"
+  },
+  {
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "src/components/SortableGridItem/SortableGridItem.js",
+    "memberof": null,
+    "longname": "src/components/SortableGridItem/SortableGridItem.js",
+    "access": null,
+    "description": null,
+    "lineNumber": 1,
+    "content": "import { Component } from 'react';\n\nexport default class SortableGridItem extends Component {\n    render() {\n        return this.props.children;\n    }\n}\n"
+  },
+  {
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "SortableGridItem",
+    "memberof": "src/components/SortableGridItem/SortableGridItem.js",
+    "longname": "src/components/SortableGridItem/SortableGridItem.js~SortableGridItem",
+    "access": null,
+    "export": true,
+    "importPath": "react-sortable-grid/src/components/SortableGridItem/SortableGridItem.js",
+    "importStyle": "SortableGridItem",
+    "description": null,
+    "lineNumber": 3,
+    "undocument": true,
+    "interface": false,
+    "extends": [
+      "react~Component"
+    ]
+  },
+  {
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "render",
+    "memberof": "src/components/SortableGridItem/SortableGridItem.js~SortableGridItem",
+    "longname": "src/components/SortableGridItem/SortableGridItem.js~SortableGridItem#render",
+    "access": null,
+    "description": null,
+    "lineNumber": 4,
+    "undocument": true,
+    "params": [],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "src/components/SortableGridItem/SortableGridItem.test.js",
+    "memberof": null,
+    "longname": "src/components/SortableGridItem/SortableGridItem.test.js",
+    "access": null,
+    "description": null,
+    "lineNumber": 1,
+    "content": "import SortableGridItem from './SortableGridItem';\nimport ReactTestUtils from 'react-addons-test-utils';\nimport React from 'react';\nimport {expect} from 'chai';\n\ndescribe('SortableGridItem component', () => {\n    it('renders only children', () => {\n        const children = <div />;\n        const shallowRenderer = ReactTestUtils.createRenderer();\n\n        shallowRenderer.render(<SortableGridItem>{children}</SortableGridItem>);\n\n        expect(shallowRenderer.getRenderOutput()).to.eq(children);\n    });\n});\n"
+  },
+  {
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "src/demo/index.js",
+    "memberof": null,
+    "longname": "src/demo/index.js",
+    "access": null,
+    "description": null,
+    "lineNumber": 1,
+    "content": "import React from 'react';\nimport SortableGrid, {SortableGridItem} from '../components/SortableGrid/SortableGrid';\n\nclass Demo extends React.Component {\n    constructor() {\n        super();\n\n        const icons = [\n            {\n                src: require('./icons/0.png'),\n                position: 0,\n            },\n            {\n                src: require('./icons/1.png'),\n                position: 1,\n            },\n            {\n                src: require('./icons/2.png'),\n                position: 2,\n            },\n            {\n                src: require('./icons/3.png'),\n                position: 3,\n            },\n            {\n                src: require('./icons/4.png'),\n                position: 4,\n            },\n            {\n                src: require('./icons/5.png'),\n                position: 5,\n            },\n            {\n                src: require('./icons/6.png'),\n                position: 6,\n            },\n            {\n                src: require('./icons/7.png'),\n                position: 7,\n            },\n            {\n                src: require('./icons/8.png'),\n                position: 8,\n            },\n            {\n                src: require('./icons/9.png'),\n                position: 9,\n            },\n        ];\n\n        this.state = {icons};\n    }\n\n    handleReorder(newPositions) {\n        this.setState({\n            icons: this.state.icons.map((icon) => {\n                return {\n                    ...icon,\n                    position: newPositions[icon.position],\n                };\n            }),\n        });\n    }\n\n    render() {\n        return <div style={{width: 700, height: 500, margin: '100px auto'}}>\n            <SortableGrid onReorder={this.handleReorder.bind(this)}\n                rows={5}\n                columns={7}>\n                {this._renderItems()}\n            </SortableGrid>\n        </div>;\n    }\n\n    _renderItems() {\n        return this.state.icons.map((icon, key) => {\n            return <SortableGridItem position={icon.position} key={key}>\n                <div>\n                    <img src={icon.src} style={{ width: '80%', margin: '10%'}} />\n                </div>\n            </SortableGridItem>;\n        });\n    }\n}\n\nReact.render(<Demo/>, document.body);\n"
+  },
+  {
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "Demo",
+    "memberof": "src/demo/index.js",
+    "longname": "src/demo/index.js~Demo",
+    "access": null,
+    "export": false,
+    "importPath": "react-sortable-grid/src/demo/index.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 4,
+    "undocument": true,
+    "interface": false,
+    "extends": [
+      "react~React.Component"
+    ]
+  },
+  {
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "src/demo/index.js~Demo",
+    "longname": "src/demo/index.js~Demo#constructor",
+    "access": null,
+    "description": null,
+    "lineNumber": 5,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "state",
+    "memberof": "src/demo/index.js~Demo",
+    "longname": "src/demo/index.js~Demo#state",
+    "access": null,
+    "description": null,
+    "lineNumber": 51,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "handleReorder",
+    "memberof": "src/demo/index.js~Demo",
+    "longname": "src/demo/index.js~Demo#handleReorder",
+    "access": null,
+    "description": null,
+    "lineNumber": 54,
+    "undocument": true,
+    "params": [
+      {
+        "name": "newPositions",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "render",
+    "memberof": "src/demo/index.js~Demo",
+    "longname": "src/demo/index.js~Demo#render",
+    "access": null,
+    "description": null,
+    "lineNumber": 65,
+    "undocument": true,
+    "params": [],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_renderItems",
+    "memberof": "src/demo/index.js~Demo",
+    "longname": "src/demo/index.js~Demo#_renderItems",
+    "access": null,
+    "description": null,
+    "lineNumber": 75,
+    "undocument": true,
+    "params": [],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "src/helpers/mousemove-listener.js",
+    "memberof": null,
+    "longname": "src/helpers/mousemove-listener.js",
+    "access": null,
+    "description": null,
+    "lineNumber": 1,
+    "content": ""
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Infinity",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Infinity",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Infinity",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "NaN",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~NaN",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "undefined",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~undefined",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "null",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~null",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Object",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Object",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "object",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~object",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Function",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Function",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "function",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~function",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Boolean",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Boolean",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "boolean",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~boolean",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Symbol",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Symbol",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Error",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Error",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "EvalError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/EvalError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~EvalError",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "InternalError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/InternalError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~InternalError",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "RangeError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RangeError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~RangeError",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "ReferenceError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ReferenceError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~ReferenceError",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "SyntaxError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SyntaxError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~SyntaxError",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "TypeError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypeError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~TypeError",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "URIError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/URIError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~URIError",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Number",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Number",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "number",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~number",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Date",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Date",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "String",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~String",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "string",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~string",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "RegExp",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~RegExp",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Int8Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int8Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int8Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Uint8Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint8Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Uint8ClampedArray",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint8ClampedArray",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Int16Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int16Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int16Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Uint16Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint16Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint16Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Int32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int32Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int32Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Uint32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint32Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint32Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Float32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Float32Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Float64Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float64Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Float64Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Map",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Map",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Set",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Set",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "WeakMap",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~WeakMap",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "WeakSet",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~WeakSet",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "ArrayBuffer",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~ArrayBuffer",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "DataView",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~DataView",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "JSON",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~JSON",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Promise",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Promise",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Generator",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Generator",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "GeneratorFunction",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/GeneratorFunction",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~GeneratorFunction",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Reflect",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Reflect",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Proxy",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Proxy",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "CanvasRenderingContext2D",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~CanvasRenderingContext2D",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "DocumentFragment",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~DocumentFragment",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Element",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Element",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~Element",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Event",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Event",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~Event",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Node",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Node",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~Node",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "NodeList",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/NodeList",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~NodeList",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "XMLHttpRequest",
+    "externalLink": "https://developer.mozilla.org/en/docs/Web/API/XMLHttpRequest",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~XMLHttpRequest",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  }
+]

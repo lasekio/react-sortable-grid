@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../../../">
+  <title data-ice="title">src/components/SortableGrid/SortableGrid.test.js | API Document</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  
+  
+</head>
+<body class="layout-container">
+
+<header>
+  <a href="./">Home</a>
+  <a href="identifiers.html">Identifier</a>
+  <a href="source.html">Source</a>
+  
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+</header>
+
+<nav class="navigation" data-ice="nav"><div data-ice="classWrap">
+  <h2>Class</h2>
+  <ul>
+    
+  <li data-ice="classDoc"><span><a href="class/src/components/SortableGrid/SortableGrid.js~SortableGrid.html">SortableGrid</a></span></li>
+<li data-ice="classDoc"><span><a href="class/src/components/SortableGridItem/SortableGridItem.js~SortableGridItem.html">SortableGridItem</a></span></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+
+
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">src/components/SortableGrid/SortableGrid.test.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import ReactTestUtils from &apos;react-addons-test-utils&apos;;
+import SortableGrid, {SortableGridItem} from &apos;./SortableGrid&apos;;
+import React from &apos;react&apos;;
+import {expect} from &apos;chai&apos;;
+import sinon from &apos;sinon&apos;;
+
+describe(&apos;SortableGrid component&apos;, function() {
+    var shallowRenderer, output, reorderStub;
+
+    function render(input) {
+        shallowRenderer = ReactTestUtils.createRenderer();
+
+        shallowRenderer.render(input);
+
+        return shallowRenderer.getRenderOutput();
+    }
+
+    it(&apos;renders div with 100% width and height&apos;, function() {
+        output = render(&lt;SortableGrid columns={4} rows={4}/&gt;);
+
+        expect(output.type).to.equal(&apos;div&apos;);
+        expect(output.props.style.width).to.equal(&apos;100%&apos;);
+        expect(output.props.style.height).to.equal(&apos;100%&apos;);
+        expect(output.props.style.position).to.equal(&apos;relative&apos;);
+    });
+
+    it(&apos;generates grid of divs&apos;, function() {
+        output = render(&lt;SortableGrid columns={4} rows={4}/&gt;);
+
+        expect(output.props.children.length).to.equal(16);
+        expect(output.props.children[0].type).to.equal(&apos;div&apos;);
+
+        expect(output.props.children[0].props.style.width).to.equal(&apos;25%&apos;);
+        expect(output.props.children[0].props.style.height).to.equal(&apos;25%&apos;);
+
+        expect(output.props.children[0].props.style.top).to.equal(&apos;0%&apos;);
+        expect(output.props.children[0].props.style.left).to.equal(&apos;0%&apos;);
+
+        expect(output.props.children[1].props.style.top).to.equal(&apos;0%&apos;);
+        expect(output.props.children[1].props.style.left).to.equal(&apos;25%&apos;);
+
+        expect(output.props.children[5].props.style.top).to.equal(&apos;25%&apos;);
+        expect(output.props.children[5].props.style.left).to.equal(&apos;25%&apos;);
+
+        expect(output.props.children[1].props.style.position).to.equal(&apos;absolute&apos;);
+    });
+
+    it(&apos;ignores all mousemove if there was no mousedown on block&apos;, function() {
+        output = render(&lt;SortableGrid columns={4} rows={4}/&gt;);
+
+        output.props.onMouseMove({
+            clientX: 20,
+            clientY: 40,
+        });
+
+        var outputAfterMove = shallowRenderer.getRenderOutput();
+
+        expect(output).to.eq(outputAfterMove);
+    });
+
+    function testMoveBlock(blockIndex = 2) {
+        reorderStub = sinon.spy();
+        output = render(&lt;SortableGrid columns={4} rows={4} onReorder={reorderStub}&gt;
+            &lt;SortableGridItem position={0}&gt;&lt;/SortableGridItem&gt;
+            &lt;SortableGridItem position={1}&gt;&lt;/SortableGridItem&gt;
+            &lt;SortableGridItem position={2}&gt;&lt;/SortableGridItem&gt;
+            &lt;SortableGridItem position={3}&gt;&lt;/SortableGridItem&gt;
+            &lt;SortableGridItem position={4}&gt;&lt;/SortableGridItem&gt;
+            &lt;SortableGridItem position={5}&gt;&lt;/SortableGridItem&gt;
+            &lt;SortableGridItem position={6}&gt;&lt;/SortableGridItem&gt;
+        &lt;/SortableGrid&gt;);
+
+        var instance = shallowRenderer._instance._instance;
+
+        instance.refs = {
+            container: {
+                offsetWidth: 200,
+                offsetHeight: 200,
+            },
+        };
+
+        output.props.children[blockIndex].props.onMouseDown({
+            clientX: 0,
+            clientY: 0,
+        });
+
+        output.props.onMouseMove({
+            clientX: 20,
+            clientY: 40,
+        });
+
+        output = shallowRenderer.getRenderOutput();
+
+        expect(output.props.children[blockIndex].props.style.marginLeft).to.equal(&apos;10%&apos;);
+        expect(output.props.children[blockIndex].props.style.marginTop).to.equal(&apos;20%&apos;);
+    }
+
+    it(&apos;moves block on drag&apos;, testMoveBlock);
+
+    function testBlockStyle(index, style, value) {
+        expect(output.props.children[index].props.style[style]).to.equal(value);
+    }
+
+    it(&apos;reorders blocks on proper move&apos;, function() {
+        testMoveBlock();
+
+        output.props.onMouseMove({
+            clientX: 1,
+            clientY: 1,
+        });
+
+        expect(reorderStub.called).to.eq(false);
+
+        output = shallowRenderer.getRenderOutput();
+
+        output.props.onMouseMove({
+            clientX: 0,
+            clientY: 40,
+        });
+
+        expect(reorderStub.called).to.eq(true);
+        expect(reorderStub.args[0][0]).to.deep.equal({
+            &apos;0&apos;: 0,
+            &apos;1&apos;: 1,
+            &apos;2&apos;: 6,
+            &apos;3&apos;: 2,
+            &apos;4&apos;: 3,
+            &apos;5&apos;: 4,
+            &apos;6&apos;: 5,
+            &apos;7&apos;: 7,
+            &apos;8&apos;: 8,
+            &apos;9&apos;: 9,
+            &apos;10&apos;: 10,
+            &apos;11&apos;: 11,
+            &apos;12&apos;: 12,
+            &apos;13&apos;: 13,
+            &apos;14&apos;: 14,
+            &apos;15&apos;: 15,
+        });
+
+        output = shallowRenderer.getRenderOutput();
+
+        testBlockStyle(1, &apos;left&apos;, &apos;25%&apos;);
+        testBlockStyle(1, &apos;top&apos;, &apos;0%&apos;);
+
+        testBlockStyle(2, &apos;left&apos;, &apos;50%&apos;);
+        testBlockStyle(2, &apos;top&apos;, &apos;0%&apos;);
+        testBlockStyle(2, &apos;zIndex&apos;, 3);
+
+        testBlockStyle(3, &apos;left&apos;, &apos;50%&apos;);
+        testBlockStyle(3, &apos;top&apos;, &apos;0%&apos;);
+        testBlockStyle(5, &apos;zIndex&apos;, 0);
+
+        testBlockStyle(4, &apos;left&apos;, &apos;75%&apos;);
+        testBlockStyle(4, &apos;top&apos;, &apos;0%&apos;);
+        testBlockStyle(4, &apos;zIndex&apos;, 1); // This block moves from edge-to-edge
+
+        testBlockStyle(5, &apos;left&apos;, &apos;0%&apos;);
+        testBlockStyle(5, &apos;top&apos;, &apos;25%&apos;);
+        testBlockStyle(5, &apos;zIndex&apos;, 0);
+
+        testBlockStyle(6, &apos;left&apos;, &apos;25%&apos;);
+        testBlockStyle(6, &apos;top&apos;, &apos;25%&apos;);
+
+        testBlockStyle(7, &apos;left&apos;, &apos;75%&apos;);
+        testBlockStyle(7, &apos;top&apos;, &apos;25%&apos;);
+
+    });
+
+    it(&apos;reorders blocks on move backward&apos;, function() {
+        testMoveBlock(5);
+
+        output.props.onMouseMove({
+            clientX: 0,
+            clientY: -40,
+        });
+
+        output = shallowRenderer.getRenderOutput();
+
+        testBlockStyle(0, &apos;left&apos;, &apos;0%&apos;);
+        testBlockStyle(0, &apos;top&apos;, &apos;0%&apos;);
+
+        testBlockStyle(1, &apos;left&apos;, &apos;50%&apos;);
+        testBlockStyle(1, &apos;top&apos;, &apos;0%&apos;);
+
+        testBlockStyle(2, &apos;left&apos;, &apos;75%&apos;);
+        testBlockStyle(2, &apos;top&apos;, &apos;0%&apos;);
+
+        testBlockStyle(3, &apos;left&apos;, &apos;0%&apos;);
+        testBlockStyle(3, &apos;top&apos;, &apos;25%&apos;);
+        testBlockStyle(3, &apos;zIndex&apos;, 1); // This block moves from edge-to-edge
+
+        testBlockStyle(4, &apos;left&apos;, &apos;25%&apos;);
+        testBlockStyle(4, &apos;top&apos;, &apos;25%&apos;);
+
+        testBlockStyle(5, &apos;left&apos;, &apos;25%&apos;);
+        testBlockStyle(5, &apos;top&apos;, &apos;25%&apos;);
+    });
+
+    it(&apos;stops draging on mouse up&apos;, function() {
+        testMoveBlock();
+
+        expect(output.props.children[2].props.style.marginLeft).to.equal(&apos;10%&apos;);
+        expect(output.props.children[2].props.style.marginTop).to.equal(&apos;20%&apos;);
+    });
+
+    it(&apos;renders blocks with given items&apos;, function() {
+        const item = &lt;SortableGridItem position={0}&gt;&lt;/SortableGridItem&gt;;
+
+        output = render(&lt;SortableGrid columns={4} rows={4}&gt;{item}&lt;/SortableGrid&gt;);
+
+        expect(output.props.children[0].props.children).to.equal(item);
+    });
+
+    it(&apos;stops dragging on mouseup&apos;, function() {
+        testMoveBlock();
+
+        output.props.onMouseUp();
+
+        output = shallowRenderer.getRenderOutput();
+
+        expect(output.props.children[2].props.style.marginLeft).to.equal(&apos;0%&apos;);
+        expect(output.props.children[2].props.style.marginTop).to.equal(&apos;0%&apos;);
+
+        // Last dragging block should has 2 index
+        expect(output.props.children[2].props.style.zIndex).to.equal(2);
+    });
+
+    it(&apos;stops dragging on mouseleave&apos;, function() {
+        testMoveBlock();
+
+        output.props.onMouseLeave();
+
+        output = shallowRenderer.getRenderOutput();
+
+        expect(output.props.children[2].props.style.marginLeft).to.equal(&apos;0%&apos;);
+        expect(output.props.children[2].props.style.marginTop).to.equal(&apos;0%&apos;);
+
+        // Last dragging block should has 2 index
+        expect(output.props.children[2].props.style.zIndex).to.equal(2);
+    });
+
+    it(&apos;prevents text selecting&apos;, function() {
+        output = render(&lt;SortableGrid columns={4} rows={4}&gt;&lt;/SortableGrid&gt;);
+        const preventDefaultSpy = sinon.spy();
+
+        output.props.children[1].props.onMouseDown({
+            preventDefault: preventDefaultSpy,
+        });
+
+        expect(preventDefaultSpy.called).to.eq(true);
+    });
+
+    it(&apos;ignores block click out of range&apos;, function() {
+        testMoveBlock();
+
+        output.props.onMouseUp();
+
+        output.props.children[7].props.onMouseDown({
+            clientX: 0,
+            clientY: 0,
+        });
+
+        output.props.onMouseMove({
+            clientX: 20,
+            clientY: 40,
+        });
+
+        output = shallowRenderer.getRenderOutput();
+
+        expect(output.props.children[7].props.style.marginLeft).to.equal(&apos;0%&apos;);
+        expect(output.props.children[7].props.style.marginTop).to.equal(&apos;0%&apos;);
+    });
+});
+</code></pre>
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.2.3)</span></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>
