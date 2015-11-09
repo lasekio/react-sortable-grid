@@ -49,6 +49,23 @@ export default class SortableGrid extends Component {
         });
     }
 
+    handleTouchStart(block, event) {
+        if (event.touches.length === 1) {
+            const touch = event.touches[0];
+
+            event.preventDefault();
+
+            return this.dragStart(block, touch);
+        }
+    }
+
+    handleTouchMove(event) {
+
+        const touch = event.touches[0];
+
+        return this.dragHandle(touch);
+    }
+
     dragHandle(event) {
         var triggerRelativeMatch = 0.25;
 
@@ -135,6 +152,8 @@ export default class SortableGrid extends Component {
         let blocks = this.state.blocks;
 
         return (<div onMouseMove={this.dragHandle.bind(this)}
+            onTouchMove={this.handleTouchMove.bind(this)}
+            onTouchEnd={this.stopDrag.bind(this)}
             onMouseUp={this.stopDrag.bind(this)}
             onMouseLeave={this.stopDrag.bind(this)}
             style={{
@@ -186,6 +205,7 @@ export default class SortableGrid extends Component {
 
                 return <div style={{marginTop: 1, ...style}}
                     key={block.id}
+                    onTouchStart={this.handleTouchStart.bind(this, block)}
                     onMouseDown={this.dragStart.bind(this, block)}>
                         {item}
                 </div>;

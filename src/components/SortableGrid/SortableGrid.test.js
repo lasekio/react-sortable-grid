@@ -271,4 +271,93 @@ describe('SortableGrid component', function() {
         expect(output.props.children[7].props.style.marginLeft).to.equal('0%');
         expect(output.props.children[7].props.style.marginTop).to.equal('0%');
     });
+
+    describe('touch events', () => {
+        var output, instance;
+        function _render() {
+            output = render(<SortableGrid columns={4} rows={4}>
+                <SortableGridItem position={0}></SortableGridItem>
+                <SortableGridItem position={1}></SortableGridItem>
+            </SortableGrid>);
+
+            instance = shallowRenderer._instance._instance;
+
+            instance.refs = {
+                container: {
+                    offsetWidth: 200,
+                    offsetHeight: 200,
+                },
+            };
+        }
+
+        function testTouchStart(touches = [{
+            clientX: 0,
+            clientY: 0,
+        }], shouldCallPreventDefault = true) {
+            let preventDefaultStub = sinon.stub();
+
+            output.props.children[0].props.onTouchStart({
+                touches: touches,
+                preventDefault: preventDefaultStub,
+            });
+
+            expect(preventDefaultStub.called).to.eq(shouldCallPreventDefault);
+        }
+
+        function expectBlockPosition(left, top) {
+            output = shallowRenderer.getRenderOutput();
+
+            expect(output.props.children[0].props.style.marginLeft).to.equal(left);
+            expect(output.props.children[0].props.style.marginTop).to.equal(top);
+        }
+
+        function testDragging(shouldDrag = true) {
+            output.props.onTouchMove({
+                touches: [{
+                    clientX: 20,
+                    clientY: 40,
+                }],
+            });
+
+            expectBlockPosition(
+                shouldDrag ? '10%' : '0%',
+                shouldDrag ? '20%' : '0%',
+            );
+        }
+
+        it('should handle touch events', () => {
+            _render();
+            testTouchStart();
+            testDragging();
+        });
+
+        it('should not react on multi touch', () => {
+            _render();
+
+            testTouchStart([{
+                clientX: 0,
+                clientY: 0,
+            }, {
+                clientX: 0,
+                clientY: 0,
+            }], false);
+
+            testDragging(false);
+        });
+
+        it('should stop dragging on touchStop', () => {
+            _render();
+            testTouchStart();
+            testDragging();
+
+            output.props.onTouchEnd({
+                touches: [{
+                    clientX: 20,
+                    clientY: 40,
+                }],
+            });
+
+            expectBlockPosition('0%', '0%');
+        });
+    });
 });
