@@ -24,6 +24,8 @@ export default class SortableGrid extends Component {
             dragStartCursorPosition: null,
             lastDraggingBlock: null,
         };
+
+        this._touchStartTimeout = null;
     }
 
     dragStart(block, event) {
@@ -53,17 +55,23 @@ export default class SortableGrid extends Component {
         if (event.touches.length === 1) {
             const touch = event.touches[0];
 
-            event.preventDefault();
-
-            return this.dragStart(block, touch);
+            this._touchStartTimeout = setTimeout(() => {
+                return this.dragStart(block, touch);
+            }, 500);
         }
     }
 
     handleTouchMove(event) {
-
         const touch = event.touches[0];
 
-        return this.dragHandle(touch);
+        if (this.state.draggingBlock !== null) {
+            event.preventDefault();
+
+            return this.dragHandle(touch);
+        } else if (this._touchStartTimeout !== null) {
+            clearTimeout(this._touchStartTimeout);
+            this._touchStartTimeout = null;
+        }
     }
 
     dragHandle(event) {

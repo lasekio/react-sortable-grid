@@ -273,7 +273,15 @@ describe('SortableGrid component', function() {
     });
 
     describe('touch events', () => {
-        var output, instance;
+        var output, instance, clock = null;
+
+        afterEach(() => {
+            if (clock) {
+                clock.restore();
+                clock = null
+            }
+        });
+
         function _render() {
             output = render(<SortableGrid columns={4} rows={4}>
                 <SortableGridItem position={0}></SortableGridItem>
@@ -293,15 +301,19 @@ describe('SortableGrid component', function() {
         function testTouchStart(touches = [{
             clientX: 0,
             clientY: 0,
-        }], shouldCallPreventDefault = true) {
+        }], tick = 500) {
             let preventDefaultStub = sinon.stub();
+
+            clock = sinon.useFakeTimers();
 
             output.props.children[0].props.onTouchStart({
                 touches: touches,
                 preventDefault: preventDefaultStub,
             });
 
-            expect(preventDefaultStub.called).to.eq(shouldCallPreventDefault);
+            clock.tick(tick);
+
+            expect(preventDefaultStub.called).to.eq(false);
         }
 
         function expectBlockPosition(left, top) {
@@ -312,17 +324,22 @@ describe('SortableGrid component', function() {
         }
 
         function testDragging(shouldDrag = true) {
+            let preventDefaultStub = sinon.stub();
+
             output.props.onTouchMove({
                 touches: [{
                     clientX: 20,
                     clientY: 40,
                 }],
+                preventDefault: preventDefaultStub
             });
 
             expectBlockPosition(
                 shouldDrag ? '10%' : '0%',
                 shouldDrag ? '20%' : '0%',
             );
+
+            expect(preventDefaultStub.called).to.eq(shouldDrag);
         }
 
         it('should handle touch events', () => {
@@ -359,5 +376,16 @@ describe('SortableGrid component', function() {
 
             expectBlockPosition('0%', '0%');
         });
+
+        it('shouldnt drag when touch move eairlier than 500ms after start', () => {
+            _render();
+            testTouchStart( [{
+                clientX: 0,
+                clientY: 0,
+            }], 0);
+            testDragging(false);
+            clock.tick(501);
+            testDragging(false);
+        })
     });
 });
