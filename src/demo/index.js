@@ -67,7 +67,7 @@ class Demo extends React.Component {
             <SortableGrid onReorder={this.handleReorder.bind(this)}
                 rows={5}
                 columns={7}>
-                {this._renderItems()}
+                {this._renderItems().concat(<div key="xD"></div>)}
             </SortableGrid>
         </div>;
     }
