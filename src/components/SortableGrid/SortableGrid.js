@@ -19,27 +19,26 @@ export default class SortableGrid extends Component {
         super();
 
         this.state = {
-            blocks: this._generateBlocks(props),
-            draggingBlock: null,
+            draggingItemKey: null,
             dragStartCursorPosition: null,
-            lastDraggingBlock: null,
+            lastDraggingItemKey: null,
         };
 
         this._touchStartTimeout = null;
+
+        this._itemsKeyToBlockMap = {};
+        this._previousPositionMap = {};
     }
 
-    dragStart(block, event) {
+    dragStart(item, event) {
         if (event.preventDefault) {
             event.preventDefault();
         }
 
-        if (this.props.children && block.position >= this.props.children.length) {
-            return false;
-        }
-
         this.setState({
-            draggingBlock: block,
-            draggingBlockDragStartPosition: block.position,
+            draggingItemKey: item.props.itemKey,
+            draggingItemPosition: item.props.position,
+            draggingBlockDragStartPosition: item.props.position,
             dragStartCursorPosition: {
                 x: event.clientX,
                 y: event.clientY,
@@ -64,7 +63,7 @@ export default class SortableGrid extends Component {
     handleTouchMove(event) {
         const touch = event.touches[0];
 
-        if (this.state.draggingBlock !== null) {
+        if (this.state.draggingItemKey !== null) {
             event.preventDefault();
 
             return this.dragHandle(touch);
@@ -77,7 +76,7 @@ export default class SortableGrid extends Component {
     dragHandle(event) {
         var triggerRelativeMatch = 0.25;
 
-        if (this.state.draggingBlock === null) {
+        if (this.state.draggingItemKey === null) {
             return;
         }
 
@@ -98,43 +97,43 @@ export default class SortableGrid extends Component {
         draggingBlockOffset.x += diff.x / 100 * this.props.columns;
         draggingBlockOffset.y += diff.y / 100 * this.props.rows;
 
-        let matchBlock = this.state.blocks.filter((block) => {
-            if (this.state.draggingBlock && block.id === this.state.draggingBlock.id) {
+        let matchItem = React.Children.map(this.props.children, item => item).filter((item) => {
+            if (item.props.itemKey === this.state.draggingItemKey) {
                 return false;
             }
 
-            if (block.position >= this.props.children.length) {
-                return false;
-            }
-
-            let offset = this._getOffestForPosition(block.position);
+            let offset = this._getOffestForPosition(item.props.position);
 
             return Math.abs(offset.x - draggingBlockOffset.x) < triggerRelativeMatch &&
                 Math.abs(offset.y - draggingBlockOffset.y) < triggerRelativeMatch;
         })[0];
 
-        if (matchBlock !== undefined) {
-            var oldPosition = this.state.draggingBlock.position;
-            var newPosition = matchBlock.position;
+        if (matchItem !== undefined) {
+            var oldPosition = this.state.draggingItemPosition;
+            var newPosition = matchItem.props.position;
             var positionMap = {};
+            React.Children.map(this.props.children, (item) => {
+                // block.previousPosition = block.position;
 
-            newState.blocks = this.state.blocks.map((block) => {
-                block.previousPosition = block.position;
+                var position = item.props.position;
+                this._previousPositionMap[item.props.itemKey] = position;
 
-                if (block.position > oldPosition && block.position <= matchBlock.position) {
-                    block.position--;
-                } else if (block.position <= oldPosition && block.position >= matchBlock.position) {
-                    block.position++;
+                if (position > oldPosition && position <= matchItem.props.position) {
+                    position--;
+                } else if (position <= oldPosition && position >= matchItem.props.position) {
+                    position++;
                 }
 
-                if (block.id === this.state.draggingBlock.id) {
-                    block.position = newPosition;
+                if (item.props.itemKey === this.state.draggingItemKey) {
+                    position = newPosition;
                 }
 
-                positionMap[block.previousPosition] = block.position;
+                positionMap[item.props.itemKey] = position;
 
-                return block;
+                return item;
             });
+
+            newState.draggingItemPosition = newPosition;
 
             this.props.onReorder(positionMap);
         }
@@ -144,9 +143,9 @@ export default class SortableGrid extends Component {
 
     stopDrag() {
         this.setState({
-            draggingBlock: null,
+            draggingItemKey: null,
             draggingBlockDragStartPosition: null,
-            lastDraggingBlock: this.state.draggingBlock,
+            lastDraggingItemKey: this.state.draggingItemKey,
         });
     }
 
@@ -157,7 +156,6 @@ export default class SortableGrid extends Component {
     render() {
         const blockWidth = 100 / this.props.columns;
         const blockHeight = 100 / this.props.rows;
-        let blocks = this.state.blocks;
 
         return (<div onMouseMove={this.dragHandle.bind(this)}
             onTouchMove={this.handleTouchMove.bind(this)}
@@ -171,12 +169,11 @@ export default class SortableGrid extends Component {
             }}
             ref="container">
 
-            {blocks.map((block, index) => {
-                var position = block.position;
+            {React.Children.map(this.props.children, (item, index) => {
+                var position = item.props.position;
                 var style = {};
-                const item = this._findItem(position);
 
-                if (this.state.draggingBlock && this.state.draggingBlock.id === block.id) {
+                if (this.state.draggingItemKey !== null && this.state.draggingItemKey === item.props.itemKey) {
                     style = {
                         marginTop: this.state.dragCursorDiffPosition.y + '%',
                         marginLeft: this.state.dragCursorDiffPosition.x + '%',
@@ -187,11 +184,17 @@ export default class SortableGrid extends Component {
                     position = this.state.draggingBlockDragStartPosition;
                 }
 
-                if (block.position !== block.previousPosition && this._isEdgePositon(block.position) && this._isEdgePositon(block.previousPosition)) {
+                const previousPosition =  this._previousPositionMap[item.props.itemKey];
+
+                if (previousPosition !== undefined &&
+                    item.position !== previousPosition &&
+                    this._isEdgePositon(previousPosition) && this._isEdgePositon(previousPosition)) {
                     style = {zIndex: 1, ...style};
                 }
 
-                if (this.state.draggingBlock === null && this.state.lastDraggingBlock && this.state.lastDraggingBlock.id === block.id) {
+                if (this.state.draggingItemKey === null &&
+                    this.state.lastDraggingItemKey !== null &&
+                    this.state.lastDraggingItemKey === item.props.itemKey) {
                     style = {zIndex: 2, ...style};
                 }
 
@@ -212,9 +215,9 @@ export default class SortableGrid extends Component {
                 };
 
                 return <div style={{marginTop: 1, ...style}}
-                    key={block.id}
-                    onTouchStart={this.handleTouchStart.bind(this, block)}
-                    onMouseDown={this.dragStart.bind(this, block)}>
+                    onMouseDown={this.dragStart.bind(this, item)}
+                    onTouchStart={this.handleTouchStart.bind(this, item)}
+                    key={item.props.key}>
                         {item}
                 </div>;
             })}

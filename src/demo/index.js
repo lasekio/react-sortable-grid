@@ -56,7 +56,7 @@ class Demo extends React.Component {
             icons: this.state.icons.map((icon) => {
                 return {
                     ...icon,
-                    position: newPositions[icon.position],
+                    position: newPositions[icon.src],
                 };
             }),
         });
@@ -74,7 +74,7 @@ class Demo extends React.Component {
 
     _renderItems() {
         return this.state.icons.map((icon, key) => {
-            return <SortableGridItem position={icon.position} key={key}>
+            return <SortableGridItem position={icon.position} key={key} itemKey={icon.src}>
                 <div>
                     <img src={icon.src} style={{ width: '80%', margin: '10%'}} />
                 </div>

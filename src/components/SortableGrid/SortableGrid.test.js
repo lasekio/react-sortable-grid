@@ -25,9 +25,16 @@ describe('SortableGrid component', function() {
     });
 
     it('generates grid of divs', function() {
-        output = render(<SortableGrid columns={4} rows={4}/>);
+        output = render(<SortableGrid columns={4} rows={4}>
+            <SortableGridItem position={0} key={0} itemKey={0}></SortableGridItem>
+            <SortableGridItem position={1} key={1} itemKey={1}></SortableGridItem>
+            <SortableGridItem position={2} key={2} itemKey={2}></SortableGridItem>
+            <SortableGridItem position={3} key={3} itemKey={3}></SortableGridItem>
+            <SortableGridItem position={4} key={4} itemKey={4}></SortableGridItem>
+            <SortableGridItem position={5} key={5} itemKey={5}></SortableGridItem>
+        </SortableGrid>);
 
-        expect(output.props.children.length).to.equal(16);
+        expect(output.props.children.length).to.equal(6);
         expect(output.props.children[0].type).to.equal('div');
 
         expect(output.props.children[0].props.style.width).to.equal('25%');
@@ -61,13 +68,13 @@ describe('SortableGrid component', function() {
     function testMoveBlock(blockIndex = 2) {
         reorderStub = sinon.spy();
         output = render(<SortableGrid columns={4} rows={4} onReorder={reorderStub}>
-            <SortableGridItem position={0}></SortableGridItem>
-            <SortableGridItem position={1}></SortableGridItem>
-            <SortableGridItem position={2}></SortableGridItem>
-            <SortableGridItem position={3}></SortableGridItem>
-            <SortableGridItem position={4}></SortableGridItem>
-            <SortableGridItem position={5}></SortableGridItem>
-            <SortableGridItem position={6}></SortableGridItem>
+            <SortableGridItem position={0} key={0} itemKey={0}></SortableGridItem>
+            <SortableGridItem position={1} key={1} itemKey={1}></SortableGridItem>
+            <SortableGridItem position={2} key={2} itemKey={2}></SortableGridItem>
+            <SortableGridItem position={3} key={3} itemKey={3}></SortableGridItem>
+            <SortableGridItem position={4} key={4} itemKey={4}></SortableGridItem>
+            <SortableGridItem position={5} key={5} itemKey={5}></SortableGridItem>
+            <SortableGridItem position={6} key={6} itemKey={6}></SortableGridItem>
         </SortableGrid>);
 
         var instance = shallowRenderer._instance._instance;
@@ -119,7 +126,10 @@ describe('SortableGrid component', function() {
         });
 
         expect(reorderStub.called).to.eq(true);
-        expect(reorderStub.args[0][0]).to.deep.equal({
+
+        const newPositions = reorderStub.args[0][0];
+
+        expect(newPositions).to.deep.equal({
             '0': 0,
             '1': 1,
             '2': 6,
@@ -127,16 +137,17 @@ describe('SortableGrid component', function() {
             '4': 3,
             '5': 4,
             '6': 5,
-            '7': 7,
-            '8': 8,
-            '9': 9,
-            '10': 10,
-            '11': 11,
-            '12': 12,
-            '13': 13,
-            '14': 14,
-            '15': 15,
         });
+
+        shallowRenderer.render(<SortableGrid columns={4} rows={4} onReorder={reorderStub}>
+            <SortableGridItem position={newPositions[0]} key={0} itemKey={0}></SortableGridItem>
+            <SortableGridItem position={newPositions[1]} key={1} itemKey={1}></SortableGridItem>
+            <SortableGridItem position={newPositions[2]} key={2} itemKey={2}></SortableGridItem>
+            <SortableGridItem position={newPositions[3]} key={3} itemKey={3}></SortableGridItem>
+            <SortableGridItem position={newPositions[4]} key={4} itemKey={4}></SortableGridItem>
+            <SortableGridItem position={newPositions[5]} key={5} itemKey={5}></SortableGridItem>
+            <SortableGridItem position={newPositions[6]} key={6} itemKey={6}></SortableGridItem>
+        </SortableGrid>);
 
         output = shallowRenderer.getRenderOutput();
 
@@ -161,10 +172,6 @@ describe('SortableGrid component', function() {
 
         testBlockStyle(6, 'left', '25%');
         testBlockStyle(6, 'top', '25%');
-
-        testBlockStyle(7, 'left', '75%');
-        testBlockStyle(7, 'top', '25%');
-
     });
 
     it('reorders blocks on move backward', function() {
@@ -174,6 +181,28 @@ describe('SortableGrid component', function() {
             clientX: 0,
             clientY: -40,
         });
+
+        const newPositions = reorderStub.args[0][0];
+
+        expect(newPositions).to.deep.equal({
+            '0': 0,
+            '1': 2,
+            '2': 3,
+            '3': 4,
+            '4': 5,
+            '5': 1,
+            '6': 6,
+        });
+
+        shallowRenderer.render(<SortableGrid columns={4} rows={4} onReorder={reorderStub}>
+            <SortableGridItem position={newPositions[0]} key={0} itemKey={0}></SortableGridItem>
+            <SortableGridItem position={newPositions[1]} key={1} itemKey={1}></SortableGridItem>
+            <SortableGridItem position={newPositions[2]} key={2} itemKey={2}></SortableGridItem>
+            <SortableGridItem position={newPositions[3]} key={3} itemKey={3}></SortableGridItem>
+            <SortableGridItem position={newPositions[4]} key={4} itemKey={4}></SortableGridItem>
+            <SortableGridItem position={newPositions[5]} key={5} itemKey={5}></SortableGridItem>
+            <SortableGridItem position={newPositions[6]} key={6} itemKey={6}></SortableGridItem>
+        </SortableGrid>);
 
         output = shallowRenderer.getRenderOutput();
 
@@ -241,35 +270,17 @@ describe('SortableGrid component', function() {
     });
 
     it('prevents text selecting', function() {
-        output = render(<SortableGrid columns={4} rows={4}></SortableGrid>);
+        output = render(<SortableGrid columns={4} rows={4}>
+            <SortableGridItem position={0} key={0} itemKey={0}></SortableGridItem>
+        </SortableGrid>);
+
         const preventDefaultSpy = sinon.spy();
 
-        output.props.children[1].props.onMouseDown({
+        output.props.children[0].props.onMouseDown({
             preventDefault: preventDefaultSpy,
         });
 
         expect(preventDefaultSpy.called).to.eq(true);
-    });
-
-    it('ignores block click out of range', function() {
-        testMoveBlock();
-
-        output.props.onMouseUp();
-
-        output.props.children[7].props.onMouseDown({
-            clientX: 0,
-            clientY: 0,
-        });
-
-        output.props.onMouseMove({
-            clientX: 20,
-            clientY: 40,
-        });
-
-        output = shallowRenderer.getRenderOutput();
-
-        expect(output.props.children[7].props.style.marginLeft).to.equal('0%');
-        expect(output.props.children[7].props.style.marginTop).to.equal('0%');
     });
 
     describe('touch events', () => {
@@ -278,7 +289,7 @@ describe('SortableGrid component', function() {
         afterEach(() => {
             if (clock) {
                 clock.restore();
-                clock = null
+                clock = null;
             }
         });
 
@@ -331,7 +342,7 @@ describe('SortableGrid component', function() {
                     clientX: 20,
                     clientY: 40,
                 }],
-                preventDefault: preventDefaultStub
+                preventDefault: preventDefaultStub,
             });
 
             expectBlockPosition(
@@ -386,6 +397,6 @@ describe('SortableGrid component', function() {
             testDragging(false);
             clock.tick(501);
             testDragging(false);
-        })
+        });
     });
 });
