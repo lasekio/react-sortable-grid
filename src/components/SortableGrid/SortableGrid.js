@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import SortableGridItem from '../SortableGridItem/SortableGridItem';
-var blockId = 0;
+let blockId = 0;
 
 /**
  * @class SortableGrid
@@ -74,25 +74,25 @@ export default class SortableGrid extends Component {
     }
 
     dragHandle(event) {
-        var triggerRelativeMatch = 0.25;
+        let triggerRelativeMatch = 0.25;
 
         if (this.state.draggingItemKey === null) {
             return;
         }
 
-        var diff = {
+        let diff = {
             x: (event.clientX - this.state.dragStartCursorPosition.x) / this.refs.container.offsetWidth * 100,
             y: (event.clientY - this.state.dragStartCursorPosition.y) / this.refs.container.offsetHeight * 100,
         };
 
-        var newState = {
+        let newState = {
             dragCursorDiffPosition: {
                 x: diff.x,
                 y: (event.clientY - this.state.dragStartCursorPosition.y) / this.refs.container.offsetWidth * 100,
             },
         };
 
-        var draggingBlockOffset = this._getOffestForPosition(this.state.draggingBlockDragStartPosition);
+        let draggingBlockOffset = this._getOffestForPosition(this.state.draggingBlockDragStartPosition);
 
         draggingBlockOffset.x += diff.x / 100 * this.props.columns;
         draggingBlockOffset.y += diff.y / 100 * this.props.rows;
@@ -109,13 +109,13 @@ export default class SortableGrid extends Component {
         })[0];
 
         if (matchItem !== undefined) {
-            var oldPosition = this.state.draggingItemPosition;
-            var newPosition = matchItem.props.position;
-            var positionMap = {};
+            let oldPosition = this.state.draggingItemPosition;
+            let newPosition = matchItem.props.position;
+            let positionMap = {};
             React.Children.map(this.props.children, (item) => {
                 // block.previousPosition = block.position;
 
-                var position = item.props.position;
+                let position = item.props.position;
                 this._previousPositionMap[item.props.itemKey] = position;
 
                 if (position > oldPosition && position <= matchItem.props.position) {
@@ -170,8 +170,8 @@ export default class SortableGrid extends Component {
             ref="container">
 
             {React.Children.map(this.props.children, (item, index) => {
-                var position = item.props.position;
-                var style = {};
+                let position = item.props.position;
+                let style = {};
 
                 if (this.state.draggingItemKey !== null && this.state.draggingItemKey === item.props.itemKey) {
                     style = {
@@ -198,7 +198,7 @@ export default class SortableGrid extends Component {
                     style = {zIndex: 2, ...style};
                 }
 
-                var {x: leftPosition, y: topPosition} = this._getOffestForPosition(position);
+                let {x: leftPosition, y: topPosition} = this._getOffestForPosition(position);
 
                 style = {
                     top: blockHeight * topPosition + '%',
@@ -237,7 +237,7 @@ export default class SortableGrid extends Component {
     }
 
     _isEdgePositon(position) {
-        var offset = position % this.props.columns;
+        let offset = position % this.props.columns;
 
         return offset === 0 || offset === this.props.columns - 1;
     }
@@ -246,7 +246,7 @@ export default class SortableGrid extends Component {
         const targetLength = props.columns * props.rows;
         let blocks = [];
 
-        for (var index = 0; index < targetLength; index++) {
+        for (let index = 0; index < targetLength; index++) {
             blocks.push({
                 id: blockId++,
                 position: index,
