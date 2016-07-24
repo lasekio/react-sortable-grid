@@ -270,7 +270,7 @@ SortableGrid.propTypes = {
     children: React.PropTypes.oneOfType([
         React.PropTypes.arrayOf(SortableGridItem),
         SortableGridItem,
-    ]).isRequired,
+    ]),
     columns: React.PropTypes.number.isRequired,
     rows: React.PropTypes.number.isRequired,
 };
